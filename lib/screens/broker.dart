@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mqtt_led/providers/broker_provider.dart';
+import 'package:mqtt_led/providers/mqttService_provider.dart';
 import 'package:mqtt_led/share/button.dart';
 import 'package:mqtt_led/share/styled_text.dart';
-import 'package:mqtt_led/services/mqttService.dart';
 import 'package:provider/provider.dart';
 
 class BrokerScreen extends StatefulWidget {
@@ -17,8 +16,6 @@ class _BrokerScreenState extends State<BrokerScreen> {
   final _brokerController = TextEditingController();
   final _portController = TextEditingController(); // Optional: Port support
 
-  String? _connectedBroker; // stores the broker address when connected
-
   @override
   void dispose() {
     // clean up the controller when the widget is disposed
@@ -30,32 +27,26 @@ class _BrokerScreenState extends State<BrokerScreen> {
 
   void connectToBroker(String address) async {
 
-    final provider = Provider.of<GlobalState>(context, listen: false);
+    final mqtt = Provider.of<MQTTProvider>(context, listen: false);
 
     try {
-      provider.setConnectionStatus(false); 
-      final MqttService mqttService = MqttService(address, 'flutter_client');
+      
       print("Trying to connect to broker at $address");
-      
-      // Attempt connection (assuming connect() is async)
-      await mqttService.connect(); 
-      
-      provider.setBrokerAddress(address);
-      
-      
-      // Update state on success
-      provider.setConnectionStatus(true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Connected to $address')),
-    );
-    
+      await mqtt.connect(address);
+
+      if (mqtt.isConnected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Connected to $address')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to connect')),
+        );
+      }    
     } catch (e) {
-      // Handle connection failure
-      provider.setConnectionStatus(false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Connection failed: ${e.toString()}')),
-      );
-      rethrow; // Optional: rethrow if you want calling code to handle the error
+      );// Optional: rethrow if you want calling code to handle the error
     }
   }
   
@@ -63,7 +54,7 @@ class _BrokerScreenState extends State<BrokerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final brokerState = Provider.of<GlobalState>(context);
+    final brokerState = Provider.of<MQTTProvider>(context);
     final brokerAddress = brokerState.brokerAddress;
     final isConnected = brokerState.isConnected;
 
