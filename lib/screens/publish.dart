@@ -25,6 +25,7 @@ class _PublishScreenState extends State<PublishScreen> {
   @override
   Widget build(BuildContext context) {
     final mqtt = Provider.of<MQTTProvider>(context, listen: false);
+    
     final brokerAddress = mqtt.brokerAddress;
     final displayAddress = brokerAddress.isEmpty ? 'Not connected': brokerAddress;
 
