@@ -25,14 +25,29 @@ class _BrokerScreenState extends State<BrokerScreen> {
   } 
 
 
-  void connectToBroker(String address) async {
+  void connectToBroker(String address, String portText) async {
 
     final mqtt = Provider.of<MQTTProvider>(context, listen: false);
 
+    if (address.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❗ Please enter a broker address")),
+      );
+      return;
+    }
+
+    int? port = int.tryParse(portText);
+    if (port == null || port < 0 || port > 65535) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❗ Invalid port number (0–65535)")),
+      );
+      return;
+    }
+
     try {
-      
+      int port = int.tryParse(portText) ?? 1883; // default to 1883 if parsing fails
       print("Trying to connect to broker at $address");
-      await mqtt.connect(address);
+      await mqtt.connect(address, port: port);
 
       if (mqtt.isConnected) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -44,10 +59,44 @@ class _BrokerScreenState extends State<BrokerScreen> {
         );
       }    
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Connection failed: ${e.toString()}')),
-      );// Optional: rethrow if you want calling code to handle the error
+      String errorMsg = e.toString();
+
+      if (errorMsg.contains("SocketException") ||
+          errorMsg.contains("Connection refused") ||
+          errorMsg.contains("No route to host") ||
+          errorMsg.contains("Failed host lookup")) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  '❌ Could not connect. Please check broker address or port number.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Connection failed: $errorMsg')),
+        );
+      }
     }
+  }
+
+  void disconnectToBroker() async {
+    final mqtt = Provider.of<MQTTProvider>(context, listen: false);
+    try{
+      if (mqtt.isConnected) {
+        mqtt.disconnect();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Disconnected from broker")),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Not connected")),
+        );
+      }
+
+    } catch(e){
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Disconnect failed: ${e.toString()}')),
+      );
+    };
   }
   
 
@@ -69,7 +118,7 @@ class _BrokerScreenState extends State<BrokerScreen> {
               if (brokerAddress?.isNotEmpty ?? false) ...[
                 const SizedBox(height: 5),
                 StyledTitle(brokerAddress!),
-                if (isConnected) const StyledText("Connected"),
+                StyledText(isConnected ? "Connected" : "Disconnected")
               ] else ...[
                 const StyledText("Not connected"),
               ],
@@ -100,18 +149,26 @@ class _BrokerScreenState extends State<BrokerScreen> {
                   ),
                 ),
                 const SizedBox(height: 15),
-                GreyButton(text: "Submit", onPressed: (){
-
-                  String brokerAddress = _brokerController.text.trim();
-                  if(brokerAddress.isNotEmpty){
-                    connectToBroker(brokerAddress);
-                  }else{
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Please enter a broker address")),
-                    );
-                  }
-
-                })
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end, // Pushes content to the right
+                  children: [
+                    GreyButton(text: "Disconnect", onPressed: (){disconnectToBroker();}),
+                    const SizedBox(width: 10),
+                    GreyButton(text: "Connect", onPressed: (){
+                    
+                      String brokerAddress = _brokerController.text.trim();
+                      String port = _portController.text.trim();
+                      if(brokerAddress.isNotEmpty){
+                        connectToBroker(brokerAddress, port);
+                      }else{
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Please enter a broker address")),
+                        );
+                      }
+                    
+                    }),
+                  ],
+                )
 
             ],
           ),

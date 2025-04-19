@@ -30,14 +30,28 @@ class _Subscribe_screenState extends State<Subscribe_screen> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
+  void _handleSubscribe() {
+    final topic = _subscribeTopicController.text.trim();
+    if (topic.isEmpty) return;
+
     final mqtt = Provider.of<MQTTProvider>(context, listen: false);
-    final messages = Provider.of<MessageProvider>(context); // listen: true by default
+    final messages = Provider.of<MessageProvider>(context, listen: false);
+
+    if (mqtt.isConnected) {
+      mqtt.subscribe(topic);
+      messages.addSubscribedTopic(topic); // <-- Store in MessageProvider
+      _subscribeTopicController.clear();
+    }
+  }
+
+  @override
+
+  Widget build(BuildContext context) {
+    final mqtt = Provider.of<MQTTProvider>(context);
     final brokerAddress = mqtt.brokerAddress;
-    final displayAddress = brokerAddress.isEmpty 
-        ? 'Not connected' 
-        : brokerAddress!;
+    final displayAddress = brokerAddress.isEmpty? 'Not connected': brokerAddress;
+    final messageProvider = Provider.of<MessageProvider>(context);
+    final isConnected = mqtt.isConnected;
 
     return Scaffold(
       appBar: AppBar(
@@ -47,7 +61,14 @@ class _Subscribe_screenState extends State<Subscribe_screen> {
             children: [
               const SizedBox(height: 15),
               const StyledHeading("Subscribe Topic"),
-              StyledTitle(displayAddress),
+              // StyledTitle(displayAddress),
+              if (brokerAddress.isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  StyledTitle(displayAddress),
+                  StyledText(isConnected ? "Connected" : "Disconnected")
+                ] else ...[
+                  const StyledText("Not connected"),
+                ],
             ]
           ),
         ),
@@ -69,30 +90,30 @@ class _Subscribe_screenState extends State<Subscribe_screen> {
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
-                  onPressed: (){
-                    if (mqtt.isConnected) {
-                      mqtt.subscribe(_subscribeTopicController.text);
-                    }
-                  },
+                  onPressed: _handleSubscribe,
                   child: const Text('Subscribe'),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height:10),
+            StyledTitle("Topic Subscribe"),
+            const SizedBox(height: 10),
             Expanded(
-              child: mqtt.isConnected
-                ? ListView.builder(
-                    itemCount: messages.messages.length,
-                    itemBuilder: (context, index) {
-                      final msg = messages.messages[index];
-                      return SubcribeMessage(
-                        title: msg['title']!,
-                        subtitle: msg['subtitle']!,
-                      );
-                    },
-                  )
-              : const Center(child: Text('Waiting for connection...')),
-            ),
+              child: ListView.builder(
+                itemCount: messageProvider.subscribedTopics.length,
+                itemBuilder: (context, index) {
+                  final topic = messageProvider.subscribedTopics[index];
+                  return Card(
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    child: ListTile(
+                      leading: const Icon(Icons.topic),
+                      title: Text(topic),
+                    ),
+                  );
+                },
+              ),
+            ),            
           ],
         ),
       ),

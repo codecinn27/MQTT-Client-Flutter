@@ -72,6 +72,13 @@ class MQTTProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void disconnect() {
+  if (_isConnected) {
+    _client.disconnect();
+    print('❌ Manually disconnected from broker');
+  }
+}
+
   void publish(String topic, String message) {
     final builder = MqttClientPayloadBuilder();
     builder.addString(message);

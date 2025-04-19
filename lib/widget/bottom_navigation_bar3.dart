@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mqtt_led/screens/broker.dart';
+import 'package:mqtt_led/screens/dashboard.dart';
 import 'package:mqtt_led/screens/connected.dart';
 import 'package:mqtt_led/screens/publish.dart';
 import 'package:mqtt_led/screens/subscribe.dart';

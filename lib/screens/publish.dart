@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:mqtt_led/providers/messageProvider.dart';
 import 'package:mqtt_led/providers/mqttService_provider.dart';
 import 'package:mqtt_led/share/styled_text.dart';
+import 'package:mqtt_led/widget/card_list.dart';
 import 'package:provider/provider.dart';
 
 class PublishScreen extends StatefulWidget {
@@ -24,10 +26,11 @@ class _PublishScreenState extends State<PublishScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mqtt = Provider.of<MQTTProvider>(context, listen: false);
-    
+    final mqtt = Provider.of<MQTTProvider>(context);
+    final messages = Provider.of<MessageProvider>(context); // listen: true by default
     final brokerAddress = mqtt.brokerAddress;
     final displayAddress = brokerAddress.isEmpty ? 'Not connected': brokerAddress;
+    final isConnected = mqtt.isConnected;
 
     return Scaffold(
       appBar: AppBar(
@@ -38,7 +41,13 @@ class _PublishScreenState extends State<PublishScreen> {
               children: [
                 const SizedBox(height: 15),
                 StyledHeading("Publish Site"),
-                StyledTitle(displayAddress), 
+                if (brokerAddress?.isNotEmpty ?? false) ...[
+                  const SizedBox(height: 5),
+                  StyledTitle(displayAddress),
+                  StyledText(isConnected ? "Connected" : "Disconnected")
+                ] else ...[
+                  const StyledText("Not connected"),
+                ],
                 const SizedBox(height: 15),
               ],
             ),
@@ -51,6 +60,21 @@ class _PublishScreenState extends State<PublishScreen> {
             _SampleCard(
               topicController: _topicController,
               messageController: _messageController,
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: mqtt.isConnected
+                ? ListView.builder(
+                    itemCount: messages.messages.length,
+                    itemBuilder: (context, index) {
+                      final msg = messages.messages[index];
+                      return SubcribeMessage(
+                        title: msg['title']!,
+                        subtitle: msg['subtitle']!,
+                      );
+                    },
+                  )
+              : const Center(child: Text('Waiting for connection...')),
             ),
           ],
         ),
